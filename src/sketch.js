@@ -45,6 +45,7 @@
 
       // hunting & eating
       this.targetFood = null;
+      this.lastEatenFood = null; // tracks what was just eaten (to remove from world)
       this.isEating = false;
       this.eatingTimeRemaining = 0; // frames
       this.eatingDuration = 3 * 60; // 3 seconds at 60 fps
@@ -101,6 +102,7 @@
           // finished eating
           if(this.targetFood){
             this.setHp(this.hp + this.targetFood.nutritionValue);
+            this.lastEatenFood = this.targetFood; // mark for removal
           }
           this.isEating = false;
           this.targetFood = null;
@@ -194,7 +196,7 @@
   let roaming = null;
   let foods = []; // array of Apple instances
   let lastFoodSpawnTime = 0; // frames elapsed since last spawn
-  const foodSpawnInterval = 60 * 60; // 60 seconds at 60 fps
+  const foodSpawnInterval = 30 * 60; // 30 seconds at 60 fps
 
   function drawScene(p){
     p.background(220);
@@ -219,13 +221,13 @@
       roaming.update(1, {w: p.width, h: p.height}, foods);
       roaming.draw(p);
 
-      // check if robaczek finished eating current target
-      if(roaming.isEating === false && roaming.targetFood){
-        // remove the eaten food from array
-        let idx = foods.indexOf(roaming.targetFood);
+      // remove food that was just eaten
+      if(roaming.lastEatenFood){
+        let idx = foods.indexOf(roaming.lastEatenFood);
         if(idx !== -1){
           foods.splice(idx, 1);
         }
+        roaming.lastEatenFood = null;
       }
     }
   }
