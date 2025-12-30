@@ -1,39 +1,50 @@
 /* Simple p5 sketch exposing start() and draw() via global `Robaczki` */
 
 (function(window){
-  // Robaczek class: basic attributes and simple update/draw helpers
+  // Robaczek class: basic attributes, color, and simple update/draw helpers
   class Robaczek {
     constructor(opts = {}){
       this.x = opts.x ?? 100;
       this.y = opts.y ?? 100;
-      this.dir = opts.dir ?? 0; // radians
+      this.dir = opts.dir ?? (Math.random() * Math.PI * 2); // radians
 
       // current values
-      this.speed = opts.speed ?? 1.0;
-      this.energy = opts.energy ?? 100;
-      this.hp = opts.hp ?? 10;
+      this.speed = opts.speed ?? (0.5 + Math.random()*1.5);
+      this.energy = opts.energy ?? opts.maxEnergy ?? 100;
+      this.hp = opts.hp ?? opts.maxHp ?? 10;
 
       // maximums
-      this.maxSpeed = opts.maxSpeed ?? 5.0;
+      this.maxSpeed = opts.maxSpeed ?? 4.0;
       this.maxEnergy = opts.maxEnergy ?? 100;
       this.maxHp = opts.maxHp ?? 10;
+
+      // visual
+      this.color = opts.color ?? ('#' + Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0'));
     }
 
     setSpeed(s){ this.speed = Math.max(0, Math.min(this.maxSpeed, s)); }
     setEnergy(e){ this.energy = Math.max(0, Math.min(this.maxEnergy, e)); }
     setHp(h){ this.hp = Math.max(0, Math.min(this.maxHp, h)); }
 
-    // dt is frame time multiplier (e.g., 1 for normal frame)
-    update(dt = 1){
+    // dt is frame time multiplier (1 default). bounds = {w,h}
+    update(dt = 1, bounds = null){
+      // wander: occasionally change direction slightly
+      if(Math.random() < 0.03) this.dir += (Math.random() - 0.5) * (Math.PI/2);
+
+      // move
       this.x += Math.cos(this.dir) * this.speed * dt;
       this.y += Math.sin(this.dir) * this.speed * dt;
 
-      // drain energy slightly when moving
-      this.energy = Math.max(0, this.energy - Math.abs(this.speed) * 0.1 * dt);
+      // drain energy when moving
+      this.energy = Math.max(0, this.energy - Math.abs(this.speed) * 0.02 * dt);
+      if(this.energy <= 0) this.speed = Math.min(this.speed, this.maxSpeed * 0.2);
 
-      // if out of energy, limit speed
-      if(this.energy <= 0){
-        this.speed = Math.min(this.speed, this.maxSpeed * 0.1);
+      // keep inside bounds by wrapping
+      if(bounds){
+        if(this.x < 0) this.x += bounds.w;
+        else if(this.x > bounds.w) this.x -= bounds.w;
+        if(this.y < 0) this.y += bounds.h;
+        else if(this.y > bounds.h) this.y -= bounds.h;
       }
     }
 
@@ -42,17 +53,38 @@
       p.translate(this.x, this.y);
       p.rotate(this.dir);
       p.noStroke();
-      p.fill(200, 120, 50);
-      p.ellipse(0, 0, 20, 12);
+      p.fill(this.color);
+      // draw as arrow (triangle pointing right in local space)
+      p.triangle(12, 0, -8, -6, -8, 6);
+
+      // optional: small energy bar above
+      let bw = 24;
+      let bh = 4;
+      p.push();
+      p.translate(0, -10);
+      p.noStroke();
+      p.fill(0,0,0,80);
+      p.rectMode(p.CENTER);
+      p.rect(0,0,bw+2,bh+2,2);
+      p.fill(0,200,80);
+      let pct = this.energy / this.maxEnergy;
+      p.rect(-bw/2 + (bw*pct)/2,0, bw*pct, bh, 2);
+      p.pop();
+
       p.pop();
     }
   }
 
-  function draw(p){
+  // single roaming Robaczek instance will be created inside p5 setup
+  let roaming = null;
+
+  function drawScene(p){
     p.background(220);
-    p.fill(50,150,50);
-    p.noStroke();
-    p.ellipse(p.width/2 + Math.sin(p.frameCount*0.02)*100, p.height/2, 80, 80);
+    // update & draw roaming robaczek if present
+    if(roaming){
+      roaming.update(1, {w: p.width, h: p.height});
+      roaming.draw(p);
+    }
   }
 
   function start(){
@@ -63,8 +95,16 @@
         var h = Math.min(600, window.innerHeight - 120);
         p.createCanvas(w, h).parent(document.getElementById('canvas-holder'));
         p.frameRate(60);
+
+        // create single roaming Robaczek at random position and random color
+        roaming = new Robaczek({
+          x: p.width * Math.random(),
+          y: p.height * Math.random(),
+        });
+        // expose instance for debugging
+        window.Robaczki.instance = roaming;
       };
-      p.draw = function(){ draw(p); };
+      p.draw = function(){ drawScene(p); };
       p.windowResized = function(){
         var w = Math.min(800, window.innerWidth - 40);
         var h = Math.min(600, window.innerHeight - 120);
@@ -73,6 +113,6 @@
     });
   }
 
-  window.Robaczki = { start: start, draw: draw, Robaczek: Robaczek };
+  window.Robaczki = { start: start, draw: drawScene, Robaczek: Robaczek };
 
 })(window);
