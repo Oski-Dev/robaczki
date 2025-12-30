@@ -42,16 +42,98 @@
       // vision
       this.viewAngle = opts.viewAngle ?? (45 + Math.random() * (180 - 45)); // degrees
       this.viewRange = opts.viewRange ?? 150; // pixels
+
+      // hunting & eating
+      this.targetFood = null;
+      this.isEating = false;
+      this.eatingTimeRemaining = 0; // frames
+      this.eatingDuration = 3 * 60; // 3 seconds at 60 fps
     }
 
     setSpeed(s){ this.speed = Math.max(0, Math.min(this.maxSpeed, s)); }
     setEnergy(e){ this.energy = Math.max(0, Math.min(this.maxEnergy, e)); }
     setHp(h){ this.hp = Math.max(0, Math.min(this.maxHp, h)); }
 
-    // dt is frame time multiplier (1 default). bounds = {w,h}
-    update(dt = 1, bounds = null){
-      // wander: occasionally change direction slightly
-      if(Math.random() < 0.03) this.dir += (Math.random() - 0.5) * (Math.PI/2);
+    // check if a target (x, y) is within field of vision
+    isInFOV(targetX, targetY){
+      let dx = targetX - this.x;
+      let dy = targetY - this.y;
+      let dist = Math.sqrt(dx*dx + dy*dy);
+      
+      // check range
+      if(dist > this.viewRange) return false;
+      
+      // check angle
+      let targetDir = Math.atan2(dy, dx);
+      let angleDiff = targetDir - this.dir;
+      
+      // normalize angle to [-PI, PI]
+      while(angleDiff > Math.PI) angleDiff -= 2*Math.PI;
+      while(angleDiff < -Math.PI) angleDiff += 2*Math.PI;
+      
+      let halfAngle = (this.viewAngle * Math.PI / 180) / 2;
+      return Math.abs(angleDiff) <= halfAngle;
+    }
+
+    // find nearest food in FOV
+    findNearestFood(foods){
+      let nearest = null;
+      let nearestDist = Infinity;
+      for(let food of foods){
+        if(this.isInFOV(food.x, food.y)){
+          let dist = Math.hypot(food.x - this.x, food.y - this.y);
+          if(dist < nearestDist){
+            nearest = food;
+            nearestDist = dist;
+          }
+        }
+      }
+      return nearest;
+    }
+
+    // dt is frame time multiplier (1 default). bounds = {w,h}, foods = array of food objects
+    update(dt = 1, bounds = null, foods = []){
+      // eating behavior
+      if(this.isEating){
+        this.eatingTimeRemaining--;
+        this.speed = 0; // stop moving while eating
+        if(this.eatingTimeRemaining <= 0){
+          // finished eating
+          if(this.targetFood){
+            this.setHp(this.hp + this.targetFood.nutritionValue);
+          }
+          this.isEating = false;
+          this.targetFood = null;
+        }
+        return; // skip normal movement logic while eating
+      }
+
+      // look for food in FOV
+      let nearestFood = this.findNearestFood(foods);
+      if(nearestFood){
+        this.targetFood = nearestFood;
+      }
+
+      // if targeting food, move towards it
+      if(this.targetFood){
+        let dx = this.targetFood.x - this.x;
+        let dy = this.targetFood.y - this.y;
+        let dist = Math.hypot(dx, dy);
+
+        // reached food?
+        if(dist < 15){
+          this.isEating = true;
+          this.eatingTimeRemaining = this.eatingDuration;
+        } else {
+          // move towards target
+          this.dir = Math.atan2(dy, dx);
+          this.speed = this.maxSpeed * 0.8; // hunt at 80% max speed
+        }
+      } else {
+        // wander when no target
+        if(Math.random() < 0.03) this.dir += (Math.random() - 0.5) * (Math.PI/2);
+        this.speed = 0.5 + Math.random() * 1.5; // normal wandering speed
+      }
 
       // move
       this.x += Math.cos(this.dir) * this.speed * dt;
@@ -75,13 +157,15 @@
       p.translate(this.x, this.y);
       p.rotate(this.dir);
 
-      // draw field of vision as semi-transparent arc
-      p.noStroke();
-      let visionColor = p.color(this.color);
-      visionColor.setAlpha(40); // semi-transparent
-      p.fill(visionColor);
-      let halfAngle = (this.viewAngle * Math.PI / 180) / 2;
-      p.arc(0, 0, this.viewRange*2, this.viewRange*2, -halfAngle, halfAngle, p.PIE);
+      // draw field of vision as semi-transparent arc (only when not eating)
+      if(!this.isEating){
+        p.noStroke();
+        let visionColor = p.color(this.color);
+        visionColor.setAlpha(40); // semi-transparent
+        p.fill(visionColor);
+        let halfAngle = (this.viewAngle * Math.PI / 180) / 2;
+        p.arc(0, 0, this.viewRange*2, this.viewRange*2, -halfAngle, halfAngle, p.PIE);
+      }
 
       // draw body as arrow (triangle pointing right in local space)
       p.noStroke();
@@ -132,8 +216,17 @@
 
     // update & draw roaming robaczek if present
     if(roaming){
-      roaming.update(1, {w: p.width, h: p.height});
+      roaming.update(1, {w: p.width, h: p.height}, foods);
       roaming.draw(p);
+
+      // check if robaczek finished eating current target
+      if(roaming.isEating === false && roaming.targetFood){
+        // remove the eaten food from array
+        let idx = foods.indexOf(roaming.targetFood);
+        if(idx !== -1){
+          foods.splice(idx, 1);
+        }
+      }
     }
   }
 
