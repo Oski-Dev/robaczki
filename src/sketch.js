@@ -1,6 +1,24 @@
 /* Simple p5 sketch exposing start() and draw() via global `Robaczki` */
 
 (function(window){
+  // Apple class: food item with nutrition value and position
+  class Apple {
+    constructor(opts = {}){
+      this.x = opts.x ?? Math.random() * 800;
+      this.y = opts.y ?? Math.random() * 600;
+      this.nutritionValue = opts.nutritionValue ?? 15;
+      this.radius = 4;
+    }
+
+    draw(p){
+      p.push();
+      p.noStroke();
+      p.fill(220, 50, 50);
+      p.ellipse(this.x, this.y, this.radius * 2);
+      p.pop();
+    }
+  }
+
   // Robaczek class: basic attributes, color, and simple update/draw helpers
   class Robaczek {
     constructor(opts = {}){
@@ -90,9 +108,28 @@
 
   // single roaming Robaczek instance will be created inside p5 setup
   let roaming = null;
+  let foods = []; // array of Apple instances
+  let lastFoodSpawnTime = 0; // frames elapsed since last spawn
+  const foodSpawnInterval = 60 * 60; // 60 seconds at 60 fps
 
   function drawScene(p){
     p.background(220);
+
+    // spawn new food every 60 seconds
+    lastFoodSpawnTime++;
+    if(lastFoodSpawnTime >= foodSpawnInterval){
+      foods.push(new Apple({
+        x: Math.random() * p.width,
+        y: Math.random() * p.height
+      }));
+      lastFoodSpawnTime = 0;
+    }
+
+    // draw all food items
+    for(let food of foods){
+      food.draw(p);
+    }
+
     // update & draw roaming robaczek if present
     if(roaming){
       roaming.update(1, {w: p.width, h: p.height});
@@ -116,6 +153,14 @@
         });
         // expose instance for debugging
         window.Robaczki.instance = roaming;
+
+        // spawn 5 apples on start
+        for(let i = 0; i < 5; i++){
+          foods.push(new Apple({
+            x: Math.random() * p.width,
+            y: Math.random() * p.height
+          }));
+        }
       };
       p.draw = function(){ drawScene(p); };
       p.windowResized = function(){
@@ -126,6 +171,6 @@
     });
   }
 
-  window.Robaczki = { start: start, draw: drawScene, Robaczek: Robaczek };
+  window.Robaczki = { start: start, draw: drawScene, Robaczek: Robaczek, Apple: Apple };
 
 })(window);
