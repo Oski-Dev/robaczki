@@ -20,6 +20,10 @@
 
       // visual
       this.color = opts.color ?? ('#' + Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0'));
+
+      // vision
+      this.viewAngle = opts.viewAngle ?? (45 + Math.random() * (180 - 45)); // degrees
+      this.viewRange = opts.viewRange ?? 150; // pixels
     }
 
     setSpeed(s){ this.speed = Math.max(0, Math.min(this.maxSpeed, s)); }
@@ -52,9 +56,18 @@
       p.push();
       p.translate(this.x, this.y);
       p.rotate(this.dir);
+
+      // draw field of vision as semi-transparent arc
+      p.noStroke();
+      let visionColor = p.color(this.color);
+      visionColor.setAlpha(40); // semi-transparent
+      p.fill(visionColor);
+      let halfAngle = (this.viewAngle * Math.PI / 180) / 2;
+      p.arc(0, 0, this.viewRange*2, this.viewRange*2, -halfAngle, halfAngle, p.PIE);
+
+      // draw body as arrow (triangle pointing right in local space)
       p.noStroke();
       p.fill(this.color);
-      // draw as arrow (triangle pointing right in local space)
       p.triangle(12, 0, -8, -6, -8, 6);
 
       // optional: small energy bar above
