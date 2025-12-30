@@ -1,0 +1,8 @@
+{
+  "name": "robaczki-p5",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "npx http-server -c-1 . -o"
+  }
+}
