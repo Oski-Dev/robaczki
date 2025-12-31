@@ -184,18 +184,32 @@
       p.fill(this.color);
       p.triangle(12, 0, -8, -6, -8, 6);
 
-      // optional: small energy bar above
+      // small bars for energy and hp
       let bw = 24;
       let bh = 4;
+      
+      // energy bar (blue) above
       p.push();
       p.translate(0, -10);
       p.noStroke();
       p.fill(0,0,0,80);
       p.rectMode(p.CENTER);
       p.rect(0,0,bw+2,bh+2,2);
-      p.fill(0,200,80);
-      let pct = this.energy / this.maxEnergy;
-      p.rect(-bw/2 + (bw*pct)/2,0, bw*pct, bh, 2);
+      p.fill(0, 100, 255); // blue for energy
+      let energyPct = this.energy / this.maxEnergy;
+      p.rect(-bw/2 + (bw*energyPct)/2,0, bw*energyPct, bh, 2);
+      p.pop();
+
+      // hp bar (green) below
+      p.push();
+      p.translate(0, -2);
+      p.noStroke();
+      p.fill(0,0,0,80);
+      p.rectMode(p.CENTER);
+      p.rect(0,0,bw+2,bh+2,2);
+      p.fill(0, 200, 100); // green for hp
+      let hpPct = this.hp / this.maxHp;
+      p.rect(-bw/2 + (bw*hpPct)/2,0, bw*hpPct, bh, 2);
       p.pop();
 
       p.pop();
