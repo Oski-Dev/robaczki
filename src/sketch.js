@@ -59,6 +59,9 @@
       this.isSleeping = false;
       this.sleepTimeRemaining = 0; // frames
       this.sleepDuration = 30 * 60; // 30 seconds at 60 fps
+
+      // death
+      this.isDead = false;
     }
 
     setSpeed(s){ this.speed = Math.max(0, Math.min(this.maxSpeed, s)); }
@@ -104,6 +107,16 @@
 
     // dt is frame time multiplier (1 default). bounds = {w,h}, foods = array of food objects
     update(dt = 1, bounds = null, foods = []){
+      // check for death
+      if(this.hp <= 0){
+        this.isDead = true;
+        this.speed = 0;
+        return; // skip all logic when dead
+      }
+
+      // skip all logic if already dead
+      if(this.isDead) return;
+
       // sleeping behavior
       if(this.isSleeping){
         this.sleepTimeRemaining--;
@@ -197,6 +210,22 @@
     draw(p){
       p.push();
       p.translate(this.x, this.y);
+
+      // draw tombstone if dead
+      if(this.isDead){
+        p.noStroke();
+        p.fill(this.color);
+        // tombstone shape: rectangle with rounded top
+        p.rectMode(p.CENTER);
+        p.rect(0, 2, 16, 20, 8, 8, 0, 0);
+        // cross on tombstone
+        p.fill(255, 255, 255, 150);
+        p.rect(0, 0, 2, 8);
+        p.rect(0, -2, 6, 2);
+        p.pop();
+        return;
+      }
+
       p.rotate(this.dir);
 
       // draw field of vision as semi-transparent arc (only when not eating or sleeping)
