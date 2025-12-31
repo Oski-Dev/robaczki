@@ -277,17 +277,17 @@
     }
   }
 
-  // single roaming Robaczek instance will be created inside p5 setup
-  let roaming = null;
+  // array of Robaczek instances
+  let robaczki = [];
   let foods = []; // array of Apple instances
   let lastFoodSpawnTime = 0; // frames elapsed since last spawn
-  const foodSpawnInterval = 30 * 60; // 30 seconds at 60 fps
+  const foodSpawnInterval = 10 * 60; // 10 seconds at 60 fps
   let foodSpawnCount = 0; // counter to track every 5th food
 
   function drawScene(p){
     p.background(220);
 
-    // spawn new food every 60 seconds
+    // spawn new food every 10 seconds
     lastFoodSpawnTime++;
     if(lastFoodSpawnTime >= foodSpawnInterval){
       foodSpawnCount++;
@@ -306,18 +306,18 @@
       food.draw(p);
     }
 
-    // update & draw roaming robaczek if present
-    if(roaming){
-      roaming.update(1, {w: p.width, h: p.height}, foods);
-      roaming.draw(p);
+    // update & draw all robaczki
+    for(let robaczek of robaczki){
+      robaczek.update(1, {w: p.width, h: p.height}, foods);
+      robaczek.draw(p);
 
       // remove food that was just eaten
-      if(roaming.lastEatenFood){
-        let idx = foods.indexOf(roaming.lastEatenFood);
+      if(robaczek.lastEatenFood){
+        let idx = foods.indexOf(robaczek.lastEatenFood);
         if(idx !== -1){
           foods.splice(idx, 1);
         }
-        roaming.lastEatenFood = null;
+        robaczek.lastEatenFood = null;
       }
     }
   }
@@ -332,15 +332,16 @@
         p.frameRate(60);
 
         // create single roaming Robaczek at random position and random color
-        roaming = new Robaczek({
+        let initialRobaczek = new Robaczek({
           x: p.width * Math.random(),
           y: p.height * Math.random(),
         });
+        robaczki.push(initialRobaczek);
         // expose instance for debugging
-        window.Robaczki.instance = roaming;
+        window.Robaczki.instance = initialRobaczek;
 
-        // spawn 5 apples on start (5th one poisonous to match pattern)
-        for(let i = 0; i < 5; i++){
+        // spawn 10 apples on start (5th and 10th poisonous to match pattern)
+        for(let i = 0; i < 10; i++){
           foodSpawnCount++;
           let isPoisonous = (foodSpawnCount % 5 === 0);
           foods.push(new Apple({
@@ -360,6 +361,17 @@
     });
   }
 
-  window.Robaczki = { start: start, draw: drawScene, Robaczek: Robaczek, Apple: Apple };
+  function addRobaczek(){
+    if(!window._robaczkiP5) return; // can't add if not started
+    let p = window._robaczkiP5;
+    let newRobaczek = new Robaczek({
+      x: p.width * Math.random(),
+      y: p.height * Math.random(),
+    });
+    robaczki.push(newRobaczek);
+    return newRobaczek;
+  }
+
+  window.Robaczki = { start: start, draw: drawScene, addRobaczek: addRobaczek, Robaczek: Robaczek, Apple: Apple };
 
 })(window);
