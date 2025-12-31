@@ -278,12 +278,15 @@
         // expose instance for debugging
         window.Robaczki.instance = roaming;
 
-        // spawn 5 apples on start (non-poisonous)
+        // spawn 5 apples on start (5th one poisonous to match pattern)
         for(let i = 0; i < 5; i++){
+          foodSpawnCount++;
+          let isPoisonous = (foodSpawnCount % 5 === 0);
           foods.push(new Apple({
             x: Math.random() * p.width,
             y: Math.random() * p.height,
-            poisonous: false
+            nutritionValue: isPoisonous ? -10 : 15,
+            poisonous: isPoisonous
           }));
         }
       };
