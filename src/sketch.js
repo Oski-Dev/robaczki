@@ -8,12 +8,17 @@
       this.y = opts.y ?? Math.random() * 600;
       this.nutritionValue = opts.nutritionValue ?? 15;
       this.radius = 4;
+      this.poisonous = opts.poisonous ?? false;
     }
 
     draw(p){
       p.push();
       p.noStroke();
-      p.fill(220, 50, 50);
+      if(this.poisonous){
+        p.fill(50, 200, 50); // green for poisonous
+      } else {
+        p.fill(220, 50, 50); // red for normal
+      }
       p.ellipse(this.x, this.y, this.radius * 2);
       p.pop();
     }
@@ -101,7 +106,12 @@
         if(this.eatingTimeRemaining <= 0){
           // finished eating
           if(this.targetFood){
+            // gain/lose hp based on nutrition value
             this.setHp(this.hp + this.targetFood.nutritionValue);
+            // poisonous food also drains energy
+            if(this.targetFood.poisonous){
+              this.setEnergy(this.energy - 20);
+            }
             this.lastEatenFood = this.targetFood; // mark for removal
           }
           this.isEating = false;
@@ -197,6 +207,7 @@
   let foods = []; // array of Apple instances
   let lastFoodSpawnTime = 0; // frames elapsed since last spawn
   const foodSpawnInterval = 30 * 60; // 30 seconds at 60 fps
+  let foodSpawnCount = 0; // counter to track every 5th food
 
   function drawScene(p){
     p.background(220);
@@ -204,9 +215,13 @@
     // spawn new food every 60 seconds
     lastFoodSpawnTime++;
     if(lastFoodSpawnTime >= foodSpawnInterval){
+      foodSpawnCount++;
+      let isPoisonous = (foodSpawnCount % 5 === 0);
       foods.push(new Apple({
         x: Math.random() * p.width,
-        y: Math.random() * p.height
+        y: Math.random() * p.height,
+        nutritionValue: isPoisonous ? -10 : 15,
+        poisonous: isPoisonous
       }));
       lastFoodSpawnTime = 0;
     }
@@ -249,11 +264,12 @@
         // expose instance for debugging
         window.Robaczki.instance = roaming;
 
-        // spawn 5 apples on start
+        // spawn 5 apples on start (non-poisonous)
         for(let i = 0; i < 5; i++){
           foods.push(new Apple({
             x: Math.random() * p.width,
-            y: Math.random() * p.height
+            y: Math.random() * p.height,
+            poisonous: false
           }));
         }
       };
