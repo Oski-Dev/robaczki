@@ -54,6 +54,11 @@
       this.isEating = false;
       this.eatingTimeRemaining = 0; // frames
       this.eatingDuration = 3 * 60; // 3 seconds at 60 fps
+
+      // sleeping
+      this.isSleeping = false;
+      this.sleepTimeRemaining = 0; // frames
+      this.sleepDuration = 30 * 60; // 30 seconds at 60 fps
     }
 
     setSpeed(s){ this.speed = Math.max(0, Math.min(this.maxSpeed, s)); }
@@ -99,6 +104,27 @@
 
     // dt is frame time multiplier (1 default). bounds = {w,h}, foods = array of food objects
     update(dt = 1, bounds = null, foods = []){
+      // sleeping behavior
+      if(this.isSleeping){
+        this.sleepTimeRemaining--;
+        this.speed = 0; // no movement while sleeping
+        // recover energy while sleeping
+        this.setEnergy(this.energy + (this.maxEnergy / this.sleepDuration));
+        if(this.sleepTimeRemaining <= 0){
+          this.isSleeping = false;
+          this.setEnergy(this.maxEnergy); // full energy after sleep
+        }
+        return; // skip all other logic while sleeping
+      }
+
+      // check if need to sleep (energy depleted)
+      if(this.energy <= 0 && !this.isEating){
+        this.isSleeping = true;
+        this.sleepTimeRemaining = this.sleepDuration;
+        this.targetFood = null;
+        return;
+      }
+
       // eating behavior
       if(this.isEating){
         this.eatingTimeRemaining--;
@@ -147,13 +173,17 @@
         this.speed = 0.5 + Math.random() * 1.5; // normal wandering speed
       }
 
+      // apply fatigue: speed decreases with low energy
+      let energyRatio = this.energy / this.maxEnergy;
+      let fatigueMultiplier = 0.3 + (energyRatio * 0.7); // 30% to 100% speed based on energy
+      this.speed *= fatigueMultiplier;
+
       // move
       this.x += Math.cos(this.dir) * this.speed * dt;
       this.y += Math.sin(this.dir) * this.speed * dt;
 
       // drain energy when moving
       this.energy = Math.max(0, this.energy - Math.abs(this.speed) * 0.02 * dt);
-      if(this.energy <= 0) this.speed = Math.min(this.speed, this.maxSpeed * 0.2);
 
       // keep inside bounds by wrapping
       if(bounds){
@@ -169,8 +199,8 @@
       p.translate(this.x, this.y);
       p.rotate(this.dir);
 
-      // draw field of vision as semi-transparent arc (only when not eating)
-      if(!this.isEating){
+      // draw field of vision as semi-transparent arc (only when not eating or sleeping)
+      if(!this.isEating && !this.isSleeping){
         p.noStroke();
         let visionColor = p.color(this.color);
         visionColor.setAlpha(40); // semi-transparent
@@ -188,9 +218,10 @@
       let bw = 24;
       let bh = 4;
       
-      // energy bar (blue) above
+      // energy bar (blue) on the left side
       p.push();
-      p.translate(0, -10);
+      p.translate(-15, 0);
+      p.rotate(-Math.PI / 2); // rotate vertical
       p.noStroke();
       p.fill(0,0,0,80);
       p.rectMode(p.CENTER);
@@ -200,9 +231,10 @@
       p.rect(-bw/2 + (bw*energyPct)/2,0, bw*energyPct, bh, 2);
       p.pop();
 
-      // hp bar (green) below
+      // hp bar (green) on the right side
       p.push();
-      p.translate(0, -2);
+      p.translate(15, 0);
+      p.rotate(-Math.PI / 2); // rotate vertical
       p.noStroke();
       p.fill(0,0,0,80);
       p.rectMode(p.CENTER);
