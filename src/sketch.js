@@ -247,9 +247,9 @@
       let bw = 24;
       let bh = 4;
       
-      // energy bar (blue) on the left side
+      // energy bar (blue) on the left side (relative to robaczek's orientation)
       p.push();
-      p.translate(-15, 0);
+      p.translate(0, -15);
       p.rotate(-Math.PI / 2); // rotate vertical
       p.noStroke();
       p.fill(0,0,0,80);
@@ -260,9 +260,9 @@
       p.rect(-bw/2 + (bw*energyPct)/2,0, bw*energyPct, bh, 2);
       p.pop();
 
-      // hp bar (green) on the right side
+      // hp bar (green) on the right side (relative to robaczek's orientation)
       p.push();
-      p.translate(15, 0);
+      p.translate(0, 15);
       p.rotate(-Math.PI / 2); // rotate vertical
       p.noStroke();
       p.fill(0,0,0,80);
