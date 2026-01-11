@@ -244,18 +244,18 @@
       p.fill(this.color);
       p.triangle(12, 0, -8, -6, -8, 6);
 
-      // draw gender indicator
+      // draw gender indicator (in the center)
       if(this.gender === 'F'){
         // pink bow for female
         p.fill(255, 105, 180); // hot pink
-        p.ellipse(-6, -8, 4, 4); // left bow
-        p.ellipse(-2, -8, 4, 4); // right bow
-        p.ellipse(-4, -8, 3, 3); // center knot
+        p.ellipse(-2, -1, 4, 4); // left bow
+        p.ellipse(2, -1, 4, 4); // right bow
+        p.ellipse(0, -1, 3, 3); // center knot
       } else {
         // black tie for male
         p.fill(0, 0, 0);
-        p.triangle(-4, -6, -5, -9, -3, -9); // tie knot
-        p.quad(-5, -6, -3, -6, -4, -3, -4, -3); // tie body
+        p.triangle(0, 1, -1, -2, 1, -2); // tie knot
+        p.quad(-1, 1, 1, 1, 0.5, 4, -0.5, 4); // tie body
       }
 
       // small bars for energy and hp
