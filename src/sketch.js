@@ -61,6 +61,12 @@
       this.sleepTimeRemaining = 0; // frames
       this.sleepDuration = 30 * 60; // 30 seconds at 60 fps
 
+      // mating
+      this.targetMate = null;
+      this.lastMateTime = -Infinity; // frames since last mating
+      this.mateCooldown = 5 * 60 * 60; // 5 minutes at 60 fps
+      this.newOffspring = null; // holds newly created robaczek to be added to world
+
       // death
       this.isDead = false;
     }
@@ -106,8 +112,32 @@
       return nearest;
     }
 
-    // dt is frame time multiplier (1 default). bounds = {w,h}, foods = array of food objects
-    update(dt = 1, bounds = null, foods = []){
+    // find nearest robaczek of opposite gender in FOV
+    findNearestMate(robaczki, currentTime){
+      // check if cooldown has passed
+      if(currentTime - this.lastMateTime < this.mateCooldown) return null;
+      
+      let nearest = null;
+      let nearestDist = Infinity;
+      for(let other of robaczki){
+        // skip self, dead robaczki, and same gender
+        if(other === this || other.isDead || other.gender === this.gender) continue;
+        // check if other robaczek is also ready to mate
+        if(currentTime - other.lastMateTime < other.mateCooldown) continue;
+        
+        if(this.isInFOV(other.x, other.y)){
+          let dist = Math.hypot(other.x - this.x, other.y - this.y);
+          if(dist < nearestDist){
+            nearest = other;
+            nearestDist = dist;
+          }
+        }
+      }
+      return nearest;
+    }
+
+    // dt is frame time multiplier (1 default). bounds = {w,h}, foods = array of food objects, robaczki = array of other robaczki
+    update(dt = 1, bounds = null, foods = [], robaczki = [], currentTime = 0){
       // check for death
       if(this.hp <= 0){
         this.isDead = true;
@@ -160,14 +190,52 @@
         return; // skip normal movement logic while eating
       }
 
+      // look for mate in FOV (priority over food)
+      let nearestMate = this.findNearestMate(robaczki, currentTime);
+      if(nearestMate){
+        this.targetMate = nearestMate;
+        this.targetFood = null; // prioritize mating over food
+      }
+
+      // if targeting mate, move towards them
+      if(this.targetMate){
+        let dx = this.targetMate.x - this.x;
+        let dy = this.targetMate.y - this.y;
+        let dist = Math.hypot(dx, dy);
+
+        // reached mate?
+        if(dist < 20){
+          // check if both are still ready to mate
+          if(currentTime - this.lastMateTime >= this.mateCooldown && 
+             currentTime - this.targetMate.lastMateTime >= this.targetMate.mateCooldown){
+            // create offspring
+            let childX = (this.x + this.targetMate.x) / 2;
+            let childY = (this.y + this.targetMate.y) / 2;
+            this.newOffspring = new Robaczek({
+              x: childX,
+              y: childY,
+              color: this.color // inherit color from this parent
+            });
+            // update mating times for both parents
+            this.lastMateTime = currentTime;
+            this.targetMate.lastMateTime = currentTime;
+          }
+          this.targetMate = null;
+        } else {
+          // move towards mate
+          this.dir = Math.atan2(dy, dx);
+          this.speed = this.maxSpeed * 0.9; // chase at 90% max speed
+        }
+      }
+
       // look for food in FOV
       let nearestFood = this.findNearestFood(foods);
-      if(nearestFood){
+      if(nearestFood && !this.targetMate){
         this.targetFood = nearestFood;
       }
 
       // if targeting food, move towards it
-      if(this.targetFood){
+      if(this.targetFood && !this.targetMate){
         let dx = this.targetFood.x - this.x;
         let dy = this.targetFood.y - this.y;
         let dist = Math.hypot(dx, dy);
@@ -183,8 +251,10 @@
         }
       } else {
         // wander when no target
-        if(Math.random() < 0.03) this.dir += (Math.random() - 0.5) * (Math.PI/2);
-        this.speed = 0.5 + Math.random() * 1.5; // normal wandering speed
+        if(!this.targetMate){
+          if(Math.random() < 0.03) this.dir += (Math.random() - 0.5) * (Math.PI/2);
+          this.speed = 0.5 + Math.random() * 1.5; // normal wandering speed
+        }
       }
 
       // apply fatigue: speed decreases with low energy
@@ -320,8 +390,9 @@
     }
 
     // update & draw all robaczki
+    let currentTime = p.frameCount;
     for(let robaczek of robaczki){
-      robaczek.update(1, {w: p.width, h: p.height}, foods);
+      robaczek.update(1, {w: p.width, h: p.height}, foods, robaczki, currentTime);
       robaczek.draw(p);
 
       // remove food that was just eaten
@@ -331,6 +402,12 @@
           foods.splice(idx, 1);
         }
         robaczek.lastEatenFood = null;
+      }
+
+      // add new offspring to world
+      if(robaczek.newOffspring){
+        robaczki.push(robaczek.newOffspring);
+        robaczek.newOffspring = null;
       }
     }
   }
